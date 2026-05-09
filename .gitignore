@@ -70,3 +70,7 @@ TAGS
 src/rtorrent
 test/rtorrent_Test*
 test-driver
+
+# Local environment overrides (docker-compose)
+###############################################
+.env

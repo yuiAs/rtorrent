@@ -26,17 +26,19 @@ services:
       PGID: "1000"
       TZ: Asia/Tokyo
 
-    # Host paths -> container paths. Edit the left side as needed.
+    # Host paths -> container paths. Override host-side paths via .env
+    # (see .env.example). Defaults below preserve the original layout.
     volumes:
-      - ./config/rtorrent.rc:/config/rtorrent.rc:ro
-      - ./data/session:/data/session
-      - ./data/watch:/data/watch
-      - ./data/download:/data/download
+      - ${RTORRENT_CONFIG_FILE:-./config/rtorrent.rc}:/config/rtorrent.rc:ro
+      - ${RTORRENT_DATA_DIR:-./data}/session:/data/session
+      - ${RTORRENT_DATA_DIR:-./data}/watch:/data/watch
+      - ${RTORRENT_DATA_DIR:-./data}/download:/data/download
+      - ${RTORRENT_DATA_DIR:-./data}/log:/data/log
 
     ports:
       # BitTorrent peer / DHT port. Match network.port_range.set in rtorrent.rc.
-      - "6881:6881/tcp"
-      - "6881:6881/udp"
+      - "${RTORRENT_BT_PORT:-6881}:${RTORRENT_BT_PORT:-6881}/tcp"
+      - "${RTORRENT_BT_PORT:-6881}:${RTORRENT_BT_PORT:-6881}/udp"
       # SCGI / XMLRPC. Bound to localhost on the host because SCGI is
       # unauthenticated — front it with a reverse proxy if you need remote
       # access. Drop the 127.0.0.1: prefix to publish on all interfaces.
