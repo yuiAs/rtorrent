@@ -1,0 +1,43 @@
+# docker compose up -d --build
+#
+# Adjust the ./data and ./config paths below to wherever you want the
+# session / watch / download directories and rtorrent.rc to live on the host.
+
+services:
+  rtorrent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Pin libtorrent (rakshasa fork) ref to match this rtorrent's version.
+        LIBTORRENT_REF: v0.16.11
+    image: rtorrent:local
+    container_name: rtorrent
+    restart: unless-stopped
+
+    # Match the ownership of host-side mounts. Override with PUID/PGID
+    # env vars if your host user is something other than 1000:1000.
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Asia/Tokyo
+
+    # Host paths -> container paths. Edit the left side as needed.
+    volumes:
+      - ./config/rtorrent.rc:/config/rtorrent.rc:ro
+      - ./data/session:/data/session
+      - ./data/watch:/data/watch
+      - ./data/download:/data/download
+
+    ports:
+      # BitTorrent peer / DHT port. Match network.port_range.set in rtorrent.rc.
+      - "6881:6881/tcp"
+      - "6881:6881/udp"
+      # SCGI / XMLRPC. Bound to localhost on the host because SCGI is
+      # unauthenticated — front it with a reverse proxy if you need remote
+      # access. Drop the 127.0.0.1: prefix to publish on all interfaces.
+      - "127.0.0.1:5000:5000/tcp"
+
+    # rtorrent in system.daemon mode runs in foreground without a TTY,
+    # so no stdin_open / tty needed.
+    stop_grace_period: 30s

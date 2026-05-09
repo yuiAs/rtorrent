@@ -1,0 +1,40 @@
+# VCS / editor noise
+.git
+.gitignore
+.github
+.dir-locals.el
+.clang-format
+.clang-tidy
+
+# Build outputs (autotools may have run on the host)
+autom4te.cache
+config.cache
+config.log
+config.status
+configure
+Makefile
+Makefile.in
+src/Makefile
+src/Makefile.in
+test/Makefile
+test/Makefile.in
+doc/Makefile
+doc/Makefile.in
+**/*.o
+**/*.lo
+**/*.la
+**/*.so
+**/.deps
+**/.libs
+**/aclocal.m4
+**/config.h
+**/config.h.in
+**/stamp-h1
+
+# Runtime data that may be sitting around in the working tree
+data/
+config/
+
+# Docker artefacts themselves don't need to be in the build context
+docker-compose.yml
+.dockerignore
