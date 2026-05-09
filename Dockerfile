@@ -86,9 +86,6 @@ RUN groupadd -g 1000 rtorrent \
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# 6881 = BT peer port (tcp) + DHT (udp); 5000 = SCGI/XMLRPC.
-EXPOSE 6881/tcp 6881/udp 5000/tcp
-
 VOLUME ["/data/session", "/data/watch", "/data/download"]
 
 ENV PUID=1000 PGID=1000 \
