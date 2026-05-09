@@ -11,7 +11,7 @@ ARG DEBIAN_VERSION=bookworm
 # ---------- builder ----------
 FROM debian:${DEBIAN_VERSION}-slim AS builder
 
-ARG LIBTORRENT_REF=v0.16.11
+ARG LIBTORRENT_REF=master
 
 ENV DEBIAN_FRONTEND=noninteractive
 

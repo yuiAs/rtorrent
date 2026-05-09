@@ -9,8 +9,12 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # Pin libtorrent (rakshasa fork) ref to match this rtorrent's version.
-        LIBTORRENT_REF: v0.16.11
+        # rakshasa/libtorrent ref. rtorrent's develop branch tracks libtorrent
+        # master (see .github/workflows/unit-tests.yml), so the tagged
+        # v0.16.11 release of libtorrent is too old — its public headers
+        # don't yet include torrent/runtime/network_config.h.
+        # Override with a specific commit hash for reproducible builds.
+        LIBTORRENT_REF: master
     image: rtorrent:local
     container_name: rtorrent
     restart: unless-stopped

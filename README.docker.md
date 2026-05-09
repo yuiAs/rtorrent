@@ -103,7 +103,7 @@ Build args
 
 | Build arg          | Default       | Notes                                                                |
 | ------------------ | ------------- | -------------------------------------------------------------------- |
-| `LIBTORRENT_REF`   | `v0.16.11`    | Git ref of `rakshasa/libtorrent` to build. Must be ABI-compatible with this rTorrent. |
+| `LIBTORRENT_REF`   | `master`      | Git ref of `rakshasa/libtorrent` to build. Tracks master because rtorrent's `develop` branch uses post-0.16.11 libtorrent headers (e.g. `torrent/runtime/network_config.h`). Pin to a commit hash for reproducible builds. |
 | `DEBIAN_VERSION`   | `bookworm`    | Base image tag for both stages.                                      |
 
 Override at build time:
