@@ -42,6 +42,13 @@ services:
       # access. Drop the 127.0.0.1: prefix to publish on all interfaces.
       - "127.0.0.1:5000:5000/tcp"
 
+    networks:
+      - rtorrent-flood-network
+
     # rtorrent in system.daemon mode runs in foreground without a TTY,
     # so no stdin_open / tty needed.
     stop_grace_period: 30s
+
+networks:
+  rtorrent-flood-network:
+    external: true
