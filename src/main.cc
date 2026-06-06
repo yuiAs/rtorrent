@@ -112,6 +112,7 @@ main(int argc, char** argv) {
     // TODO: Create a fake thread object for initializing other processes and enabling logging.
     torrent::initialize_main_thread();
 
+    // All signal handlers must restore errno if they return.
     SignalHandler::set_ignore(SIGPIPE);
     SignalHandler::set_handler(SIGSEGV,  std::bind(&do_panic, SIGSEGV));
     SignalHandler::set_handler(SIGILL,   std::bind(&do_panic, SIGILL));
@@ -140,16 +141,6 @@ main(int argc, char** argv) {
 
     SignalHandler::set_sigaction_handler(SIGBUS, &handle_sigbus);
 
-    // SIGUSR1 is used for interrupting polling, forcing the target
-    // thread to process new non-socket events.
-    //
-    // LibTorrent uses sockets for this purpose on Solaris and other
-    // platforms that do not properly pass signals to the target
-    // threads. Use '--enable-interrupt-socket' when configuring
-    // LibTorrent to enable this workaround.
-    if (torrent::system::Thread::should_handle_sigusr1())
-      SignalHandler::set_handler(SIGUSR1, []() {});
-
     torrent::log_add_group_output(torrent::LOG_NOTICE,    "important");
     torrent::log_add_group_output(torrent::LOG_DHT_ERROR, "important");
 
@@ -160,7 +151,7 @@ main(int argc, char** argv) {
     initialize_rpc_slots();
 
     torrent::initialize();
-    torrent::set_main_thread_slots(std::bind(&client_perform));
+    torrent::main_thread::set_client_callback(&client_perform);
 
     scgi::ThreadScgi::create_thread();
     session::ThreadSession::create_thread();

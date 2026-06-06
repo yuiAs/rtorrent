@@ -18,6 +18,7 @@
 .libs
 Makefile
 aclocal.m4
+‎actmp.*
 ar-lib
 autom4te.cache
 compile
@@ -69,6 +70,7 @@ TAGS
 ###########################
 src/rtorrent
 test/rtorrent_Test*
+test/test-suite.log.tmp
 test-driver
 
 # Local environment overrides (docker-compose)

@@ -6,6 +6,7 @@
 #include <string>
 #include <torrent/common.h>
 #include <torrent/torrent.h>
+#include <torrent/utils/string_manip.h>
 
 #include "rpc/rpc_manager.h"
 #include "rpc/command.h"
@@ -33,24 +34,29 @@ json_to_object(const json& value) {
   case json::value_t::number_unsigned:
   case json::value_t::number_integer:
     return torrent::Object(value.get<int64_t>());
+
   case json::value_t::boolean:
     return value.get<bool>() ? torrent::Object(int64_t(1)) : torrent::Object(int64_t(0));
+
   case json::value_t::string:
     return torrent::Object(value.get<std::string>());
+
   case json::value_t::array: {
     auto  array_raw = torrent::Object::create_list();
     auto& array     = array_raw.as_list();
-    for (const auto& entry : value) {
+
+    for (const auto& entry : value)
       array.push_back(json_to_object(entry));
-    }
+
     return array_raw;
   }
   case json::value_t::object: {
     auto  map_raw = torrent::Object::create_map();
     auto& map     = map_raw.as_map();
-    for (const auto& entry : value.items()) {
+
+    for (const auto& entry : value.items())
       map[entry.key()] = json_to_object(entry.value());
-    }
+
     return map_raw;
   }
   case json::value_t::number_float:
@@ -61,17 +67,38 @@ json_to_object(const json& value) {
   }
 }
 
+// Note: Only throw rpc_errors here.
+
 json
-object_to_json(const torrent::Object& object) noexcept {
+object_to_json(const torrent::Object& object) {
   switch (object.type()) {
   case torrent::Object::TYPE_VALUE:
     return object.as_value();
+
   case torrent::Object::TYPE_STRING:
+    if (object.flags() & torrent::Object::flag_as_binary) {
+
+      // We should optimize our imported json library to support copying base64 strings directly.
+      if (object.flags() & torrent::Object::flag_base64) {
+        auto binary_data = torrent::utils::transform_from_base64_unsafe(object.as_string());
+
+        if (!binary_data.has_value())
+          throw rpc_error(JSONRPC_INTERNAL_ERROR, "invalid base64 string in base64-as-binary object");
+
+        return json::binary(*binary_data);
+      }
+
+      return json::binary({object.as_string().begin(), object.as_string().end()});
+    }
+
     return object.as_string();
+
   case torrent::Object::TYPE_LIST: {
     json result = json::array();
+
     for (const auto& obj : object.as_list())
       result.push_back(object_to_json(obj));
+
     return result;
   }
   case torrent::Object::TYPE_MAP: {
@@ -135,7 +162,9 @@ jsonrpc_call_command(const std::string& method, const json& params) {
 
   try {
     const auto& result = rpc::commands.call_command(itr, params_object, target);
+
     return object_to_json(result);
+
   } catch (untrusted_error& e) {
     throw rpc_error(JSONRPC_METHOD_NOT_FOUND_ERROR, e.what());
   }

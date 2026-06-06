@@ -32,21 +32,6 @@ Download::~Download() {
   m_download = download_type();
 }
 
-void
-Download::enable_udp_trackers(bool state) {
-  for (int idx = 0, end = m_download.tracker_controller().size(); idx < end; ++idx) {
-    auto tracker = m_download.tracker_controller().at(idx);
-
-    if (tracker.type() != torrent::TRACKER_UDP)
-      continue;
-
-    if (state)
-      tracker.enable();
-    else
-      tracker.disable();
-  }
-}
-
 uint32_t
 Download::priority() {
   return bencode()->get_key("rtorrent").get_key_value("priority");
@@ -131,7 +116,7 @@ Download::set_root_directory(const std::string& path) {
 
       (file_list->is_multi_file() ?
        !file_list->is_root_dir_created() :
-       !file_stat.update(file_list->front()->frozen_path()))) {
+       !file_stat.update(file_list->front()->frozen_path().str()))) {
 
     set_message("Cannot change the directory of an open download after the files have been moved.");
     rpc::call_command("d.state.set", (int64_t)0, rpc::make_target(this));

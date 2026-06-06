@@ -174,6 +174,8 @@ libsub_root_a_SOURCES = \
 	utils/list_focus.h \
 	utils/lockfile.cc \
 	utils/lockfile.h \
+	utils/watch_ready_queue.cc \
+	utils/watch_ready_queue.h \
 	\
 	command_download.cc \
 	command_dynamic.cc \
@@ -202,5 +204,9 @@ libsub_root_a_SOURCES = \
 	signal_handler.cc \
 	signal_handler.h
 
+
+if NO_NCURSES
+libsub_root_a_SOURCES += display/curses_stub.cc display/curses_stub.h
+endif
 
 AM_CPPFLAGS = -I$(srcdir) -I$(top_srcdir) -DPACKAGE_DATADIR=\"$(pkgdatadir)\"

@@ -7,7 +7,6 @@
 #include <sstream>
 #include <iomanip>
 #include <torrent/exceptions.h>
-#include <torrent/connection_manager.h>
 #include <torrent/rate.h>
 #include <torrent/throttle.h>
 #include <torrent/torrent.h>
@@ -19,6 +18,8 @@
 #include <torrent/net/socket_address.h>
 #include <torrent/peer/client_info.h>
 #include <torrent/runtime/network_config.h>
+#include <torrent/runtime/runtime.h>
+#include <torrent/runtime/socket_manager.h>
 
 #include "control.h"
 #include "globals.h"
@@ -154,7 +155,7 @@ print_download_status(char* first, char* last, core::Download* d) {
 
   } else if (d->tracker_controller().has_active_trackers_not_scrape()) {
     auto tracker = d->tracker_controller().find_if([](const auto& t) {
-      return t.is_busy_not_scrape();
+      return t.is_requesting_not_scrape();
     });
 
     if (tracker.is_valid()) {
@@ -426,9 +427,9 @@ print_status_extra(char* first, char* last) {
                        torrent::net_thread::http_stack()->max_total_connections());
 
   first = print_buffer(first, last, " [S %i/%i/%i]",
-                       torrent::total_handshakes(),
-                       torrent::connection_manager()->size(),
-                       torrent::connection_manager()->max_size());
+                       torrent::runtime::total_handshakes(),
+                       torrent::runtime::socket_manager()->size(),
+                       torrent::runtime::socket_manager()->max_size());
 
   first = print_buffer(first, last, " [F %i/%i]",
                        torrent::file_manager()->open_files(),

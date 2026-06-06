@@ -1,6 +1,6 @@
 m4_pattern_allow([PKG_CHECK_EXISTS])
 
-AC_INIT([rtorrent],[0.16.11],[sundell.software@gmail.com])
+AC_INIT([rtorrent],[0.16.13],[sundell.software@gmail.com])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIRS([scripts])
@@ -11,12 +11,12 @@ LT_INIT
 
 AC_PROG_CXX
 
-AC_DEFINE([API_VERSION], [20], [api version])
+AC_DEFINE([API_VERSION], [21], [api version])
 
 # Filter out unwanted flags added by autoconf on some systems, e.g. MacOS.
 TORRENT_REMOVE_UNWANTED(CXX, $CXX, -std=c++11 -std=gnu++11)
 
-AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
+AX_CXX_COMPILE_STDCXX(20, noext, mandatory)
 
 AC_SYS_LARGEFILE
 
@@ -41,19 +41,27 @@ AC_ARG_ENABLE(execinfo,
   ])
 
 AX_PTHREAD([], AC_MSG_ERROR([requires pthread]))
-AX_WITH_CURSES
 
-if test "x$ax_cv_ncursesw" != xyes && test "x$ax_cv_ncurses" != xyes; then
-  AC_MSG_ERROR([requires either NcursesW or Ncurses library])
+TORRENT_WITHOUT_NCURSES
+
+if test "x$with_ncurses" != xno; then
+  AX_WITH_CURSES
+
+  if test "x$ax_cv_ncursesw" != xyes && test "x$ax_cv_ncurses" != xyes; then
+    AC_MSG_ERROR([requires either NcursesW or Ncurses library])
+  fi
 fi
 
 PKG_CHECK_MODULES([CPPUNIT], [cppunit],, [no_cppunit="yes"])
 PKG_CHECK_MODULES([ZLIB], [zlib])
-PKG_CHECK_MODULES([DEPENDENCIES], [libtorrent >= 0.16.11])
+PKG_CHECK_MODULES([DEPENDENCIES], [libtorrent >= 0.16.13])
 
 AC_LANG_PUSH(C++)
 TORRENT_WITH_XMLRPC_C
 AC_LANG_POP(C++)
+
+dnl We don't have LuaJIT support, and the script breaks if not disabled.
+AM_CONDITIONAL([LUAJIT], [false])
 
 TORRENT_WITH_LUA
 TORRENT_WITH_TINYXML2
@@ -63,7 +71,7 @@ if test ${with_xmlrpc_c+y} && test ${with_xmlrpc_tinyxml2+y}; then
   AC_MSG_ERROR([--with-xmlrpc-c and --with-xmlrpc-tinyxml2 cannot be used together. Please choose only one])
 fi
 
-AC_DEFINE(USER_AGENT, [std::string(PACKAGE "/" VERSION "/") + torrent::version()], Http user agent)
+AC_DEFINE(USER_AGENT, [std::string(PACKAGE "/" VERSION)], Http user agent)
 
 dnl Only update global build variables immediately before generating the output,
 dnl to avoid affecting the global build environment for other autoconf checks.
@@ -71,7 +79,8 @@ LIBS="$PTHREAD_LIBS $CURSES_LIB $CURSES_LIBS $ZLIB_LIBS $DEPENDENCIES_LIBS $LIBS
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS $CURSES_CFLAGS $ZLIB_CFLAGS $DEPENDENCIES_CFLAGS"
 CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS $CURSES_CFLAGS $ZLIB_CFLAGS $DEPENDENCIES_CFLAGS"
 
-TORRENT_CHECK_POPCOUNT()
+TORRENT_CHECK_CACHELINE
+TORRENT_CHECK_POPCOUNT
 
 AC_CONFIG_FILES([
   Makefile

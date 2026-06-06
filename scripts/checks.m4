@@ -54,6 +54,8 @@ AC_DEFUN([TORRENT_CHECK_EPOLL], [
       }
       ])],
     [
+      use_epoll=yes
+
       AC_DEFINE(USE_EPOLL, 1, Use epoll.)
       AC_MSG_RESULT(yes)
     ], [
@@ -86,6 +88,8 @@ AC_DEFUN([TORRENT_CHECK_KQUEUE], [
       }
       ])],
     [
+      use_kqueue=yes
+
       AC_DEFINE(USE_KQUEUE, 1, Use kqueue.)
       AC_MSG_RESULT(yes)
     ], [
@@ -125,7 +129,7 @@ AC_DEFUN([TORRENT_CHECK_FALLOCATE], [
                #include <fcntl.h>
               ]], [[ fallocate(0, FALLOC_FL_KEEP_SIZE, 0, 0); return 0;
               ]])],[
-      AC_DEFINE(HAVE_FALLOCATE, 1, Linux's fallocate supported.)
+      AC_DEFINE(USE_FALLOCATE, 1, Linux's fallocate supported.)
       AC_MSG_RESULT(yes)
     ],[
       AC_MSG_RESULT(no)
@@ -156,6 +160,116 @@ AC_DEFUN([TORRENT_WITH_POSIX_FALLOCATE], [
       fi
     ])
 ])
+
+AC_DEFUN([TORRENT_CHECK_STATVFS], [
+  AC_CHECK_HEADERS(sys/vfs.h sys/statvfs.h sys/statfs.h)
+
+  AC_MSG_CHECKING(for statvfs)
+
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+      #if HAVE_SYS_VFS_H
+      #include <sys/vfs.h>
+      #endif
+      #if HAVE_SYS_STATVFS_H
+      #include <sys/statvfs.h>
+      #endif
+      #if HAVE_SYS_STATFS_H
+      #include <sys/statfs.h>
+      #endif
+    ]], [[
+      struct statvfs s; fsblkcnt_t c;
+      statvfs("", &s);
+      fstatvfs(0, &s);
+    ]])],[
+      AC_DEFINE(FS_STAT_FD, [fstatvfs(fd, &m_stat) == 0], Function to determine filesystem stats from fd)
+      AC_DEFINE(FS_STAT_FN, [statvfs(fn, &m_stat) == 0], Function to determine filesystem stats from filename)
+      AC_DEFINE(FS_STAT_STRUCT, [struct statvfs], Type of second argument to statfs function)
+      AC_DEFINE(FS_STAT_SIZE_TYPE, [unsigned long], Type of block size member in stat struct)
+      AC_DEFINE(FS_STAT_COUNT_TYPE, [fsblkcnt_t], Type of block count member in stat struct)
+      AC_DEFINE(FS_STAT_BLOCK_SIZE, [(m_stat.f_frsize)], Determine the block size)
+      AC_MSG_RESULT(ok)
+      have_stat_vfs=yes
+    ],[
+      AC_MSG_RESULT(no)
+      have_stat_vfs=no
+    ])
+])
+
+AC_DEFUN([TORRENT_CHECK_STATFS], [
+  AC_CHECK_HEADERS(sys/statfs.h)
+
+  AC_MSG_CHECKING(for statfs)
+
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+      #if HAVE_SYS_STATFS_H
+      #include <sys/statfs.h>
+      #endif
+    ]], [[
+      struct statfs s;
+      statfs("", &s);
+      fstatfs(0, &s);
+    ]])],[
+      AC_DEFINE(FS_STAT_FD, [fstatfs(fd, &m_stat) == 0], Function to determine filesystem stats from fd)
+      AC_DEFINE(FS_STAT_FN, [statfs(fn, &m_stat) == 0], Function to determine filesystem stats from filename)
+      AC_DEFINE(FS_STAT_STRUCT, [struct statfs], Type of second argument to statfs function)
+      AC_DEFINE(FS_STAT_SIZE_TYPE, [long], Type of block size member in stat struct)
+      AC_DEFINE(FS_STAT_COUNT_TYPE, [long], Type of block count member in stat struct)
+      AC_DEFINE(FS_STAT_BLOCK_SIZE, [(m_stat.f_bsize)], Determine the block size)
+      AC_MSG_RESULT(ok)
+      have_stat_vfs=yes
+    ],[
+      AC_MSG_RESULT(no)
+      have_stat_vfs=no
+    ])
+])
+
+AC_DEFUN([TORRENT_DISABLED_STATFS], [
+      AC_DEFINE(FS_STAT_FD, [(errno = ENOSYS) == 0], Function to determine filesystem stats from fd)
+      AC_DEFINE(FS_STAT_FN, [(errno = ENOSYS) == 0], Function to determine filesystem stats from filename)
+      AC_DEFINE(FS_STAT_STRUCT, [struct {blocksize_type  f_bsize; blockcount_type f_bavail;}], Type of second argument to statfs function)
+      AC_DEFINE(FS_STAT_SIZE_TYPE, [int], Type of block size member in stat struct)
+      AC_DEFINE(FS_STAT_COUNT_TYPE, [int], Type of block count member in stat struct)
+      AC_DEFINE(FS_STAT_BLOCK_SIZE, [(4096)], Determine the block size)
+      AC_MSG_RESULT(No filesystem stats available)
+])
+
+AC_DEFUN([TORRENT_WITHOUT_STATVFS], [
+  AC_ARG_WITH(statvfs,
+    AS_HELP_STRING([--without-statvfs],[don't try to use statvfs to find free diskspace]),
+    [
+      if test "$withval" = "yes"; then
+        TORRENT_CHECK_STATVFS
+      else
+        have_stat_vfs=no
+      fi
+    ],
+    [
+      TORRENT_CHECK_STATVFS
+    ])
+])
+
+AC_DEFUN([TORRENT_WITHOUT_STATFS], [
+  AC_ARG_WITH(statfs,
+    AS_HELP_STRING([--without-statfs],[don't try to use statfs to find free diskspace]),
+    [
+      if test "$have_stat_vfs" = "no"; then
+        if test "$withval" = "yes"; then
+          TORRENT_CHECK_STATFS
+        else
+          TORRENT_DISABLED_STATFS
+        fi
+      fi
+    ],
+    [
+      if test "$have_stat_vfs" = "no"; then
+        TORRENT_CHECK_STATFS
+        if test "$have_stat_vfs" = "no"; then
+          TORRENT_DISABLED_STATFS
+        fi
+      fi
+    ])
+])
+
 
 AC_DEFUN([TORRENT_WITH_ADDRESS_SPACE], [
   AC_ARG_WITH(address-space,
@@ -189,7 +303,7 @@ AC_DEFUN([TORRENT_WITH_FASTCGI], [
 
       elif test "$withval" = "yes"; then
         CXXFLAGS="$CXXFLAGS"
-	LIBS="$LIBS -lfcgi"        
+	LIBS="$LIBS -lfcgi"
 
         AC_LINK_IFELSE([AC_LANG_PROGRAM([[ #include <fcgiapp.h>
         ]], [[ FCGX_Init(); ]])],[
@@ -281,29 +395,45 @@ AC_DEFUN([TORRENT_WITH_LUA], [
       AC_MSG_RESULT(no)
     else
       AX_PROG_LUA
-      AX_LUA_LIBS
-      AX_LUA_HEADERS
-      AC_DEFINE(HAVE_LUA, 1, Use LUA.)
-      AC_DEFINE(LUA_DATADIR, [PACKAGE_DATADIR "/lua"], [LUA data directory])
-      LIBS="$LIBS $LUA_LIB"
-      CXXFLAGS="$CXXFLAGS $LUA_INCLUDE"
+
+      # 1. Override AX_LUA_LIBS default crash behavior 
+      AX_LUA_LIBS([have_lua_libs=yes], [have_lua_libs=no])
+
+      # 2. Override AX_LUA_HEADERS default crash behavior
+      AX_LUA_HEADERS([have_lua_headers=yes], [have_lua_headers=no])
+
+      # 3. Only inject if both checks completely pass
+      if test "x$have_lua_libs" = "xyes" && test "x$have_lua_headers" = "xyes"; then
+        AC_DEFINE(HAVE_LUA, 1, Use LUA.)
+        AC_DEFINE(LUA_DATADIR, [PACKAGE_DATADIR "/lua"], [LUA data directory])
+        LIBS="$LIBS $LUA_LIB"
+        CXXFLAGS="$CXXFLAGS $LUA_INCLUDE"
+      else
+        # Throw fatal error ONLY if user strictly ran --with-lua=yes
+        if test "$withval" = "yes"; then
+          AC_MSG_ERROR([Lua support explicitly requested, but compatible Lua 5.3 libs/headers were not found.])
+        else
+          AC_MSG_WARN([Lua 5.3 libs or headers missing. Proceeding without Lua support.])
+        fi
+      fi
     fi
   ],[
     AC_MSG_RESULT(ignored)
   ])
 ])
 
+
 AC_DEFUN([TORRENT_WITH_INOTIFY], [
   AC_LANG_PUSH(C++)
 
-  AC_CHECK_HEADERS([sys/inotify.h mcheck.h])
+  AC_CHECK_HEADERS([sys/inotify.h])
   AC_MSG_CHECKING([whether sys/inotify.h actually works])
 
   AC_COMPILE_IFELSE([AC_LANG_SOURCE([
       #include <sys/inotify.h>
       int main(int,const char**) { return (-1 == inotify_init()); }])
     ],[
-     AC_DEFINE(HAVE_INOTIFY, 1, [sys/inotify.h exists and works correctly])
+     AC_DEFINE(USE_INOTIFY, 1, [sys/inotify.h exists and works correctly])
      AC_MSG_RESULT(yes)],
     [AC_MSG_RESULT(failed)]
   )
@@ -317,6 +447,7 @@ AC_DEFUN([TORRENT_CHECK_PTHREAD_SETNAME_NP], [
   AC_MSG_CHECKING(for pthread_setname_np type)
 
   AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+    #define _GNU_SOURCE
     #include <pthread.h>
     #include <sys/types.h>
   ]], [[
@@ -374,4 +505,21 @@ AC_DEFUN([TORRENT_WITH_SYSTEMD], [
           [AC_MSG_ERROR([libsystemd not found. Install libsystemd-dev (or the equivalent for your distribution).])])
       fi
     ])
+])
+
+
+AC_DEFUN([TORRENT_WITHOUT_NCURSES], [
+  AC_ARG_WITH([ncurses],
+    [AS_HELP_STRING([--without-ncurses], [build without ncurses (daemon-only mode)])],
+    [with_ncurses=$withval],
+    [with_ncurses=yes])
+
+  if test "x$with_ncurses" = xno; then
+    AC_DEFINE([HAVE_NO_NCURSES], [1], [Define to 1 if building without ncurses])
+    CURSES_LIBS=""
+    CURSES_CFLAGS=""
+    CURSES_LIB=""
+  fi
+
+  AM_CONDITIONAL([NO_NCURSES], [test "x$with_ncurses" = xno])
 ])

@@ -70,4 +70,5 @@ decode_base64(const std::string& input) {
   }
   return decodedBytes;
 }
+
 } // namespace utils
